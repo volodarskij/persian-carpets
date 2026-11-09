@@ -8,9 +8,9 @@ Procedural Persian-inspired carpet screensavers for Android TVs, projectors and 
 
 ## Download
 
-- [Morph APK](https://github.com/volodarskij/persian-carpets/releases/download/v1.0.0/persian-carpets-morph-1.0.0.apk)
-- [Zoom APK](https://github.com/volodarskij/persian-carpets/releases/download/v1.0.0/persian-carpets-zoom-1.0.0.apk)
-- [Release and checksums](https://github.com/volodarskij/persian-carpets/releases/tag/v1.0.0)
+- [Morph APK](https://github.com/volodarskij/persian-carpets/raw/refs/heads/main/releases/v1.0.0/persian-carpets-morph-1.0.0.apk)
+- [Zoom APK](https://github.com/volodarskij/persian-carpets/raw/refs/heads/main/releases/v1.0.0/persian-carpets-zoom-1.0.0.apk)
+- [Release and checksums](https://github.com/volodarskij/persian-carpets/tree/main/releases/v1.0.0)
 
 Android 8.0/API 26 or newer, OpenGL ES 2.0. These are signed sideload builds, not Play Store packages.
 

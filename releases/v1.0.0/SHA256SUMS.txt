@@ -1,0 +1,2 @@
+ad79e26d3c3133ac28648bc54471cd7e9c5faa311ef70917499c1afff6e4376c  persian-carpets-morph-1.0.0.apk
+3592ffc55efebe5874f24dcdc1eaa7207b1f00f9320d8b75814c00342ae63d44  persian-carpets-zoom-1.0.0.apk
