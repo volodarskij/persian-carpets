@@ -21,7 +21,7 @@ const assets=path.join(__dirname,'../app/src/main/assets');
    g.bindFramebuffer(g.FRAMEBUFFER,null);g.viewport(0,0,800,450);g.clearColor(0,0,0,0);g.clear(g.COLOR_BUFFER_BIT);set(raw,450);g.drawArrays(g.TRIANGLE_STRIP,0,4);const expected=points.map(p=>pixel(...p));
    g.clear(g.COLOR_BUFFER_BIT);set(cached,450);g.uniform1i(g.getUniformLocation(cached,'fieldTexture'),0);g.drawArrays(g.TRIANGLE_STRIP,0,4);const actual=points.map(p=>pixel(...p));
    // Stencil must follow the six petals, not the bounding quad or a circular disk.
-   const motifVertex='attribute vec2 a;varying vec4 ink;varying vec4 motif;void main(){gl_Position=vec4(a,0.,1.);ink=vec4(1.);motif=vec4(a,1.,8.);}';
+   const motifVertex='attribute vec2 a;varying vec2 local;varying vec4 ink;varying vec4 motif;void main(){local=vec2(0.);gl_Position=vec4(a,0.,1.);ink=vec4(1.);motif=vec4(a,1.,8.);}';
    const flower=program(motifVertex,s.fastFragment),solid=program(s.surfaceVertex,'precision mediump float;void main(){gl_FragColor=vec4(0.,1.,0.,1.);}');
    g.clear(g.COLOR_BUFFER_BIT|g.STENCIL_BUFFER_BIT);g.enable(g.STENCIL_TEST);g.stencilFunc(g.ALWAYS,1,255);g.stencilOp(g.KEEP,g.KEEP,g.REPLACE);g.useProgram(flower);g.uniform1f(g.getUniformLocation(flower,'lodScale'),1);g.colorMask(false,false,false,false);g.drawArrays(g.TRIANGLE_STRIP,0,4);
    g.colorMask(true,true,true,true);g.stencilFunc(g.EQUAL,1,255);g.stencilOp(g.KEEP,g.KEEP,g.KEEP);g.useProgram(solid);g.drawArrays(g.TRIANGLE_STRIP,0,4);

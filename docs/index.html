@@ -1602,6 +1602,8 @@ html>body{padding:0}</style>
     var a=target(seed,index),b=target(seed,index+1),t=phase*phase*(3-2*phase);
     var s=a.v.map(function(v,j){return mix(v,b.v[j],t);}),p=a.palette.map(function(v,j){return color(v,b.palette[j],t);}),cmd=[];
     var unfold=!!(nested&&nested.unfold),unfoldSimple=!!(nested&&nested.detailLevel===1),unfoldFrame=!!(nested&&nested.unfoldFrame),unfoldWave=!!(nested&&nested.unfoldWave),unfoldJunction=!!(nested&&nested.unfoldJunction),fusion=!!(nested&&nested.fusion);nested=nested===true;
+    // Unfolding silhouettes have explicit petals and valleys, including their masks.
+    if(unfold||unfoldFrame||unfoldWave){s[2]=.14+s[2]*.45;s[3]=.065+s[3]*.40;s[4]=.025+s[4]*.4;}
     var rx=s[0],ry=s[1],bw=s[6],fx=hw-bw,fy=hh-bw,j;
     var motifs=a.motifs.map(function(m,j){return m.map(function(v,k){return mix(v,b.motifs[j][k],t);});});
     function cubic(x,y,cx,cy,dx,dy,xx,yy,width,col){cmd.push([0,x,y,cx,cy,dx,dy,xx,yy,width,col]);}
@@ -2167,6 +2169,7 @@ html>body{padding:0}</style>
     var fieldFragment=surfaceFragment.slice(0,surfaceFragment.indexOf('float distance='))+'float distance=shape.x/max(gradient,.18);float quantized=clamp((distance+64.)/128.,0.,1.)*255.;float hi=floor(quantized);gl_FragColor=vec4(hi/255.,quantized-hi,shape.z<0.?1.:shape.y>.5?.5:0.,shape.w);}';
     var cachedSurfaceFragment='precision highp float;varying vec2 world;uniform sampler2D fieldTexture;uniform float aa;uniform float junctionMask;uniform vec3 blue;uniform vec3 accent;uniform vec3 warm;uniform vec3 gold;void main(){vec4 texelValue=texture2D(fieldTexture,vec2(world.x/800.,1.-world.y/450.));float distance=(texelValue.r+texelValue.g/255.)*128.-64.;if(junctionMask>.5){if(texelValue.a<.18||distance>-4.)discard;gl_FragColor=vec4(1.);return;}float coverage=1.-smoothstep(1.4-aa,1.4+aa,distance);if(coverage<.001)discard;vec3 material=texelValue.b>.75?mix(blue,warm,.58):texelValue.b>.25?mix(blue,warm,.32):mix(blue,accent,.22);float rim=smoothstep(-1.4-aa,-1.4+aa,distance);gl_FragColor=vec4(mix(material,gold,rim),coverage);}';
     var fastFragment=CarpetGpu.shaders.fragment.replace('void main(){','uniform float lodScale;void main(){').replace('.9/max(motif.w,1.)','.9/max(motif.w*lodScale,1.)').replace('coverage*.46','coverage*.46*smoothstep(.45,1.4,motif.w*lodScale)');
+    fastFragment=fastFragment.replace('smoothstep(.45,1.4,motif.w*lodScale)','smoothstep(1.,2.2,motif.w*lodScale)');
     fastFragment=fastFragment.slice(0,-1)+'if(gl_FragColor.a<.02)discard;}';
     return {vertex:vertex,fragment:fragment,fastFragment:fastFragment,fanVertex:'attribute vec2 a;void main(){gl_Position=vec4(a.x/400.-1.,1.-a.y/225.,0.,1.);}',fanFragment:'precision mediump float;uniform vec3 pigment;void main(){gl_FragColor=vec4(pigment,1.);}',backgroundVertex:backgroundVertex,backgroundFragment:backgroundFragment,cornerVertex:'uniform vec4 bounds;uniform float cornerStretch;'+CarpetGpu.shaders.vertex.replace('vec2 p=mix(a,b,phase)/16.;','vec2 p=mix(a,b,phase)/16.;vec2 axis=normalize(bounds.xy);p+=axis*dot(p-bounds.xy,axis)*cornerStretch;'),surfaceVertex:surfaceVertex,surfaceFragment:surfaceFragment,surfaceDerivativeFragment:derivativeFragment,fieldFragment:fieldFragment,fieldDerivativeFragment:'#extension GL_OES_standard_derivatives : enable\n#define HAS_DERIVATIVES\n'+fieldFragment,cachedSurfaceFragment:cachedSurfaceFragment};
   }

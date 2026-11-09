@@ -45,6 +45,9 @@
     var a=target(seed,index),b=target(seed,index+1),t=phase*phase*(3-2*phase);
     var s=a.v.map(function(v,j){return mix(v,b.v[j],t);}),p=a.palette.map(function(v,j){return color(v,b.palette[j],t);}),cmd=[];
     var unfold=!!(nested&&nested.unfold),unfoldSimple=!!(nested&&nested.detailLevel===1),unfoldFrame=!!(nested&&nested.unfoldFrame),unfoldWave=!!(nested&&nested.unfoldWave),unfoldJunction=!!(nested&&nested.unfoldJunction),fusion=!!(nested&&nested.fusion);nested=nested===true;
+    // Unfolding silhouettes have explicit petals and valleys, including their masks.
+    if(unfold||unfoldFrame||unfoldWave){s[2]=.14+s[2]*.45;s[3]=.065+s[3]*.40;s[4]=.025+s[4]*.4;}
+    var unfoldCoarse=!!(arguments[3]&&arguments[3].detailLevel===2),unfoldFine=!!(arguments[3]&&arguments[3].detailLevel===3);
     var rx=s[0],ry=s[1],bw=s[6],fx=hw-bw,fy=hh-bw,j;
     var motifs=a.motifs.map(function(m,j){return m.map(function(v,k){return mix(v,b.motifs[j][k],t);});});
     function cubic(x,y,cx,cy,dx,dy,xx,yy,width,col){cmd.push([0,x,y,cx,cy,dx,dy,xx,yy,width,col]);}
@@ -280,14 +283,14 @@
     if(unfold){
       // A rosette composed from the morph's botanical vocabulary, at every scale.
       var dw=hh,dh=hh;
-      microField(0,0,dw,dh,unfoldSimple?180:2600,false);
-      if(!unfoldSimple){
+      if(!unfoldCoarse)microField(0,0,dw,dh,unfoldSimple?180:2600,false);
+      if(!unfoldSimple&&!unfoldCoarse){
       undergrowth(dw*.48,dh*.13,dw*.24,dh*.19,.4+s[12],1,.82);
       undergrowth(dw*.15,dh*.61,dw*.14,dh*.26,2.4-s[12],-1,.82);
       undergrowth(dw*.67,dh*.54,dw*.25,dh*.25,1.5+s[12],1,.92);
       }
-      quarterGarden(0,0,dw*.92,dh*.92,0);
-      for(j=0;j<(unfoldSimple?0:3);j++){
+      if(!unfoldFine)quarterGarden(0,0,dw*.92,dh*.92,0);
+      for(j=0;j<(unfoldSimple||unfoldFine?0:3);j++){
         var th=(j+.38)/3*PI/2,rr=.76+.04*Math.sin(j*2+s[12]);
         var x=Math.cos(th)*dw*rr,y=Math.sin(th)*dh*rr;
         ornament(x,y,36+8*Math.sin(j+1+s[12]),th+PI/2,j%2?2:3,.96);

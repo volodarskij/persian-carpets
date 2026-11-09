@@ -58,3 +58,5 @@ To test with an installed browser, set `CARPET_BROWSER` to its executable. Tests
 The app declares no network/storage permissions. Assets are bundled, and the calculation WebView blocks network, file and content access. Neither photographs nor external textures are bundled: all ornament is generated.
 
 On the tested Android 9 projector with Mali-450 MP, zoom measured 21.3–21.7 FPS and morph 30.4–31.1 FPS, with no geometry starvation or GL errors in the recorded samples. These are measured ranges, not guaranteed frame rates on other devices. See [verification notes](docs/verification.md).
+
+Latest projector tuning: [Zoom APK at 24–26 FPS](releases/projector-24fps/persian-carpets-zoom-24fps.apk). See the tuning notes in `docs/verification.md` for resolution and frame-pacing limits.

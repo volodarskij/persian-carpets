@@ -27,10 +27,12 @@ final class CarpetView extends GLSurfaceView implements GLSurfaceView.Renderer {
     private final int[][] meshes;
     private final int[] quadBuffer=new int[1],target=new int[1],texture=new int[1],stencil=new int[1];
     private final int[] fanBuffer=new int[1],fieldTarget=new int[1],fieldTexture=new int[1];
+    private final int[] gardenTarget=new int[4],gardenTexture=new int[4];
+    private final double[] gardenTimes={-100,-100,-100,-100};private int gardenNext;
     private final FloatBuffer fan=ByteBuffer.allocateDirect(66*8).order(ByteOrder.nativeOrder()).asFloatBuffer();
     private final FloatBuffer quad=ByteBuffer.allocateDirect(32).order(ByteOrder.nativeOrder()).asFloatBuffer();
     private final float[] colors=new float[18],contour=new float[3],bounds=new float[4],center=new float[2],fieldColor=new float[3];
-    private Shader main,background,surface,field,edge,corner,mirror;
+    private Shader main,background,surface,field,edge,corner,mirror,garden;
     private CarpetPose left,right;
     private boolean uploadNeeded=true,failed;
     private int width=1,height=1,fw,fh,fieldWidth,fieldHeight,frames,stalls,zoomResolution=960;
@@ -38,8 +40,8 @@ final class CarpetView extends GLSurfaceView implements GLSurfaceView.Renderer {
     private double lastSeconds=-1;
 
     CarpetView(Context context,boolean zoom,Consumer<String> reportError) throws IOException {
-        super(context);this.zoom=zoom;this.reportError=reportError;meshes=new int[zoom?8:1][2];
-        for(String name:new String[]{"carpet.vert","carpet.frag","mirror.vert","mirror.frag","zoom.vert","zoom-fast.frag","fan.vert","fan.frag","corner.vert","surface.vert","field.frag","field-derivative.frag","surface-cached.frag"})sources.put(name,CarpetSession.asset(context,name));
+        super(context);this.zoom=zoom;this.reportError=reportError;meshes=new int[zoom?9:1][2];
+        for(String name:new String[]{"carpet.vert","carpet.frag","mirror.vert","mirror.frag","zoom.vert","zoom-fast.frag","fan.vert","fan.frag","corner.vert","surface.vert","field.frag","field-derivative.frag","surface-cached.frag","garden-cache.vert","garden-cache.frag"})sources.put(name,CarpetSession.asset(context,name));
         quad.put(new float[]{-1,-1,1,-1,-1,1,1,1}).position(0);
         setEGLContextClientVersion(2);setEGLConfigChooser(8,8,8,0,0,0);setPreserveEGLContextOnPause(true);setRenderer(this);
         setContentDescription(zoom?"Персидский ковёр: раскрытие центра":"Персидский ковёр: морфинг орнамента");
@@ -72,6 +74,13 @@ final class CarpetView extends GLSurfaceView implements GLSurfaceView.Renderer {
         try{
             failed=false;main=new Shader(zoom?"zoom.vert":"carpet.vert",zoom?"zoom-fast.frag":"carpet.frag");mirror=new Shader("mirror.vert","mirror.frag");
             if(zoom){
+                garden=new Shader("garden-cache.vert","garden-cache.frag");java.util.Arrays.fill(gardenTimes,-100);gardenNext=0;
+                glGenTextures(4,gardenTexture,0);glGenFramebuffers(4,gardenTarget,0);for(int cache=0;cache<4;cache++){glBindTexture(GL_TEXTURE_2D,gardenTexture[cache]);
+                int size=cache==1||cache==2?512:1024;glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,size,size,0,GL_RGBA,GL_UNSIGNED_BYTE,null);
+                glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
+                glBindFramebuffer(GL_FRAMEBUFFER,gardenTarget[cache]);glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,gardenTexture[cache],0);
+                if(glCheckFramebufferStatus(GL_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE)throw new IllegalStateException("Incomplete garden cache");}
                 background=new Shader("fan.vert","fan.frag");edge=new Shader("carpet.vert","carpet.frag");corner=new Shader("corner.vert","carpet.frag");
                 String extensions=glGetString(GL_EXTENSIONS);boolean derivatives=extensions!=null&&extensions.contains("GL_OES_standard_derivatives");
                 field=new Shader("surface.vert",derivatives?"field-derivative.frag":"field.frag");surface=new Shader("surface.vert","surface-cached.frag");
@@ -83,7 +92,7 @@ final class CarpetView extends GLSurfaceView implements GLSurfaceView.Renderer {
             glGenTextures(1,texture,0);glBindTexture(GL_TEXTURE_2D,texture[0]);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
             glGenFramebuffers(1,target,0);if(zoom)glGenRenderbuffers(1,stencil,0);fw=fh=0;uploadNeeded=true;
-            String gpu=glGetString(GL_RENDERER);zoomResolution=gpu!=null&&(gpu.contains("Mali-450")||gpu.contains("Mali-400"))?480:960;
+            String gpu=glGetString(GL_RENDERER);zoomResolution=gpu!=null&&(gpu.contains("Mali-450")||gpu.contains("Mali-400"))?560:960;
             Log.i("PersianCarpet","mode="+(zoom?"zoom":"morph")+" GPU="+gpu);
         }catch(RuntimeException e){fail(e);}
     }
@@ -100,8 +109,16 @@ final class CarpetView extends GLSurfaceView implements GLSurfaceView.Renderer {
     private void drawQuad(){quad();glDrawArrays(GL_TRIANGLE_STRIP,0,4);}
     private void paint(Shader shader,float t){shader.use();shader.one("phase",t);glUniform3fv(shader.u("palette[0]"),6,colors,0);}
     private void rosette(float scale,int group,float x,float y,float t){
-        paint(main,t);main.one("magnification",scale);glUniform2f(main.u("offset"),x,y);main.three("contour",contour,0);main.one("edgeAA",.65f/(fh*scale));main.one("lodScale",scale*fw/800);
-        mesh(group);glDrawArrays(GL_TRIANGLES,0,left.counts[group]);
+        paint(main,t);main.one("cacheClip",0);main.one("magnification",scale);glUniform2f(main.u("offset"),x,y);main.three("contour",contour,0);main.one("edgeAA",.65f/(fh*scale));main.one("lodScale",scale*fw/800);
+        mesh(group);
+        if(group==7&&scale>1.4f){
+            float[] a=left.coarseBounds,b=right==null?a:right.coarseBounds;int start=-1,batches=a.length/4;
+            for(int batch=0;batch<=batches;batch++){
+                int i=batch*4;boolean visible=batch<batches&&Math.min(a[i],b[i])*scale<802&&Math.min(a[i+1],b[i+1])*scale<452&&Math.max(a[i+2],b[i+2])*scale> -2&&Math.max(a[i+3],b[i+3])*scale> -2;
+                if(visible&&start<0)start=batch*96;
+                if(!visible&&start>=0){glDrawArrays(GL_TRIANGLES,start,Math.min(batch*96,left.counts[group])-start);start=-1;}
+            }
+        }else glDrawArrays(GL_TRIANGLES,0,left.counts[group]);
     }
     private void frame(int group,float t,float reach){
         boolean isCorner=group==4||group==5;Shader shader=isCorner?corner:edge;paint(shader,t);
@@ -117,7 +134,7 @@ final class CarpetView extends GLSurfaceView implements GLSurfaceView.Renderer {
         if(zoom){glBindRenderbuffer(GL_RENDERBUFFER,stencil[0]);glRenderbufferStorage(GL_RENDERBUFFER,GL_STENCIL_INDEX8,fw,fh);glFramebufferRenderbuffer(GL_FRAMEBUFFER,GL_STENCIL_ATTACHMENT,GL_RENDERBUFFER,stencil[0]);}
         if(glCheckFramebufferStatus(GL_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE)throw new IllegalStateException("Incomplete carpet framebuffer");
         if(zoom){
-            fieldWidth=Math.min(zoomResolution<960?192:320,fw);fieldHeight=Math.max(1,Math.round(fieldWidth*9/16f));
+            fieldWidth=Math.min(zoomResolution<960?128:320,fw);fieldHeight=Math.max(1,Math.round(fieldWidth*9/16f));
             glBindTexture(GL_TEXTURE_2D,fieldTexture[0]);glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,fieldWidth,fieldHeight,0,GL_RGBA,GL_UNSIGNED_BYTE,null);
             glBindFramebuffer(GL_FRAMEBUFFER,fieldTarget[0]);glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,fieldTexture[0],0);
             if(glCheckFramebufferStatus(GL_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE)throw new IllegalStateException("Incomplete distance field framebuffer");glBindFramebuffer(GL_FRAMEBUFFER,target[0]);
@@ -159,6 +176,7 @@ final class CarpetView extends GLSurfaceView implements GLSurfaceView.Renderer {
     }
     private void renderZoom(double seconds,float t){
         int cycle=(int)Math.floor(seconds/18);float magnification=(float)Math.pow(1/RATIO,seconds/18-cycle),reach=cornerReach(magnification);
+        if(gardenTimes[3]<0){for(int c=0;c<4;c++)prepareGarden(seconds,t);}else prepareGarden(seconds,t);
         // Evaluate expensive union geometry once, then reuse its signed distances.
         glBindFramebuffer(GL_FRAMEBUFFER,fieldTarget[0]);glViewport(0,0,fieldWidth,fieldHeight);glDisable(GL_BLEND);
         field.use();field.three("contour",contour,0);glUniform4fv(field.u("bounds"),1,bounds,0);glUniform2fv(field.u("waveCenter"),1,center,0);field.one("zoom",magnification);field.one("cornerStretch",reach);field.one("aa",.7f*450/fieldHeight);drawQuad();
@@ -166,19 +184,36 @@ final class CarpetView extends GLSurfaceView implements GLSurfaceView.Renderer {
         glEnable(GL_STENCIL_TEST);glStencilMask(255);glClearStencil(0);glClear(GL_STENCIL_BUFFER_BIT);glStencilOp(GL_KEEP,GL_KEEP,GL_REPLACE);
         for(int depth=-1;depth<=4;depth++){
             float scale=magnification*(float)Math.pow(RATIO,depth);
-            glStencilMask(1);glClear(GL_STENCIL_BUFFER_BIT);glStencilMask(3);glStencilFunc(GL_ALWAYS,1,255);
+            glStencilMask(255);glStencilFunc(GL_ALWAYS,0,255);
             background.use();layerBackground(depth+cycle);background.three("pigment",fieldColor,0);drawBackground(scale);
-            glStencilMask(2);glStencilFunc(GL_EQUAL,3,1);if(scale*450*fw/800>2)rosette(scale,scale*fw/800<.18?7:0,0,0,t);
+            glStencilMask(255);glStencilFunc(GL_ALWAYS,2,255);
+            if(scale*450*fw/800>2){drawGarden(scale,scale>1.4f?3:0);if(scale>1.4f)rosette(scale,7,0,0,t);}
         }
-        glStencilMask(0);glStencilFunc(GL_EQUAL,0,2);glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);frame(3,t,reach);glDisable(GL_STENCIL_TEST);glStencilMask(255);
+        glStencilMask(0);glStencilFunc(GL_EQUAL,0,2);glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);drawGarden(1,1);glDisable(GL_STENCIL_TEST);glStencilMask(255);
         frame(4,t,reach);
         surface.use();glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,fieldTexture[0]);glUniform1i(surface.u("fieldTexture"),0);surface.one("junctionMask",0);surface.one("aa",.7f*450/fh);surface.three("blue",colors,3);surface.three("gold",colors,15);surface.three("accent",colors,12);surface.three("warm",colors,6);drawQuad();
         for(int depth=-1;depth<=4;depth++){float scale=magnification*(float)Math.pow(RATIO,depth);if(scale*125*fw/800>2)rosette(scale,1,0,0,t);}
         for(int depth=-1;depth<=4;depth++){float scale=magnification*(float)Math.pow(RATIO,depth),radius=secondaryRadius(scale);if(radius*fw/800>2)rosette(radius/100,2,center[0]*scale,center[1]*scale,t);}
-        frame(5,t,reach);frame(6,t,reach);
+        frame(5,t,reach);drawGarden(1,2);
         glEnable(GL_STENCIL_TEST);glStencilMask(255);glClearStencil(0);glClear(GL_STENCIL_BUFFER_BIT);glStencilFunc(GL_ALWAYS,1,255);glStencilOp(GL_KEEP,GL_KEEP,GL_REPLACE);glColorMask(false,false,false,false);
-        surface.use();surface.one("junctionMask",1);drawQuad();glColorMask(true,true,true,true);glStencilMask(0);glStencilFunc(GL_EQUAL,1,255);glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);frame(3,t,reach);
+        surface.use();glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,fieldTexture[0]);surface.one("junctionMask",1);drawQuad();glColorMask(true,true,true,true);glStencilMask(0);glStencilFunc(GL_EQUAL,1,255);glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);drawGarden(1,1);
         glDisable(GL_STENCIL_TEST);glStencilMask(255);
+    }
+    private void prepareGarden(double seconds,float t){
+        int cache=gardenNext;
+        if(seconds>=gardenTimes[cache]&&seconds-gardenTimes[cache]<1.0)return;
+        gardenTimes[cache]=seconds;gardenNext=(cache+1)%4;
+        {glBindFramebuffer(GL_FRAMEBUFFER,gardenTarget[cache]);int size=cache==1||cache==2?512:1024;glViewport(0,0,size,size);
+        glDisable(GL_STENCIL_TEST);glClearColor(0,0,0,0);glClear(GL_COLOR_BUFFER_BIT);
+        glEnable(GL_BLEND);glBlendFuncSeparate(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA,GL_ONE,GL_ONE_MINUS_SRC_ALPHA);
+        paint(main,t);main.one("cacheClip",cache==0||cache==3?1:0);main.three("contour",contour,0);main.one("edgeAA",.65f/size);main.one("magnification",1);glUniform2f(main.u("offset"),0,0);main.one("lodScale",size/800f);
+        int group=cache==0?0:cache==1?3:cache==2?6:8;mesh(group);glDrawArrays(GL_TRIANGLES,0,left.counts[group]);
+        glBindTexture(GL_TEXTURE_2D,gardenTexture[cache]);glGenerateMipmap(GL_TEXTURE_2D);}
+        glBindFramebuffer(GL_FRAMEBUFFER,target[0]);glViewport(0,0,fw,fh);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+    }
+    private void drawGarden(float scale,int cache){
+        garden.use();garden.one("magnification",scale);glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,gardenTexture[cache]);glUniform1i(garden.u("garden"),0);
+        glBlendFunc(GL_ONE,GL_ONE_MINUS_SRC_ALPHA);drawQuad();glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     }
     private void drawBackground(float scale){
         fan.position(0);fan.put(0).put(0);

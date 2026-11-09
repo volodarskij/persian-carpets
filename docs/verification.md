@@ -32,3 +32,9 @@ Both modes run from their own launcher entry and share their rendering session w
 - Desktop controls, pause, fullscreen, keyboard, narrow layout and offline rendering were exercised.
 
 The native optimized renderer also received an independent static review of its lifecycle, pose queue, framebuffer restoration, stencil state and LOD groups. Device timings describe the test samples only; startup and background scheduling can cause occasional longer frames.
+
+## Projector 24 FPS tuning
+
+The current native zoom tuning measures 24.8–25.6 changing frames/s on the Mali-450 projector at a 1120×630 reconstructed image (560×315 quarter framebuffer). This trades some spatial resolution for motion and mipmapped detail stability. It is not a locked frame-pacing claim: isolated cache updates reached 90 ms in the measured run.
+
+The renderer uses four separately refreshed pattern caches, live coarse geometry, endpoint-safe viewport culling, and one stencil clear per assembled frame. Distance-field sampling is restored explicitly before the junction mask. Native pose, geometry and actual GLSL checks pass; an independent review found no remaining correctness issues.
