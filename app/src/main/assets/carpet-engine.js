@@ -47,7 +47,8 @@
     var unfold=!!(nested&&nested.unfold),unfoldSimple=!!(nested&&nested.detailLevel===1),unfoldFrame=!!(nested&&nested.unfoldFrame),unfoldWave=!!(nested&&nested.unfoldWave),unfoldJunction=!!(nested&&nested.unfoldJunction),fusion=!!(nested&&nested.fusion);nested=nested===true;
     // Unfolding silhouettes have explicit petals and valleys, including their masks.
     if(unfold||unfoldFrame||unfoldWave){s[2]=.14+s[2]*.45;s[3]=.065+s[3]*.40;s[4]=.025+s[4]*.4;}
-    var unfoldCoarse=!!(arguments[3]&&arguments[3].detailLevel===2),unfoldFine=!!(arguments[3]&&arguments[3].detailLevel===3);
+    var centerLod=!!(arguments[3]&&arguments[3].detailLevel===4);
+    var unfoldCoarse=!!(arguments[3]&&(arguments[3].detailLevel===2||centerLod)),unfoldFine=!!(arguments[3]&&arguments[3].detailLevel===3);
     var rx=s[0],ry=s[1],bw=s[6],fx=hw-bw,fy=hh-bw,j;
     var motifs=a.motifs.map(function(m,j){return m.map(function(v,k){return mix(v,b.motifs[j][k],t);});});
     function cubic(x,y,cx,cy,dx,dy,xx,yy,width,col){cmd.push([0,x,y,cx,cy,dx,dy,xx,yy,width,col]);}
@@ -70,11 +71,11 @@
     function contour(theta){return 1+s[2]*Math.cos(4*theta)+s[3]*Math.cos(8*theta)+s[4]*Math.cos(12*theta);}
     function local(cx,cy,x,y,angle){var c=Math.cos(angle),q=Math.sin(angle);return [cx+x*c-y*q,cy+x*q+y*c];}
     function fineLeaf(cx,cy,r,angle,col,vein){
-      var points=[];for(var side=-1;side<=1;side+=2)for(var k=0;k<=6;k++){
-        var u=side<0?k/6:1-k/6,pt=local(cx,cy,side*r*.28*Math.sin(PI*u)+s[9]*r*u*u*.3,-r*u,angle);points.push(pt[0],pt[1]);
+      var steps=centerLod?3:6,points=[];for(var side=-1;side<=1;side+=2)for(var k=0;k<=steps;k++){
+        var u=side<0?k/steps:1-k/steps,pt=local(cx,cy,side*r*.28*Math.sin(PI*u)+s[9]*r*u*u*.3,-r*u,angle);points.push(pt[0],pt[1]);
       }
       var center=local(cx,cy,0,-r*.5,angle);poly(points,col,-1,0,center[0],center[1]);
-      if(vein){var tip=local(cx,cy,0,-r*.82,angle);line([cx,cy,center[0],center[1],tip[0],tip[1]],5,.65);}
+      if(vein&&!centerLod){var tip=local(cx,cy,0,-r*.82,angle);line([cx,cy,center[0],center[1],tip[0],tip[1]],5,.65);}
     }
     function tendril(x,y,r,angle,hand){
       var points=[];
@@ -106,9 +107,9 @@
       var base=local(cx,cy,0,r*.52,angle),order=[-3,3,-2,2,-1,1,0];
       order.forEach(function(j){
         var tilt=angle+j*(.31+s[3]*.3),length=r*(1.42-Math.abs(j)*.12)*slender,center=local(base[0],base[1],0,-length*.50,tilt);
-        var outline=[];
-        for(var side=-1;side<=1;side+=2)for(var k=0;k<=12;k++){
-          var u=side<0?k/12:1-k/12,wide=Math.pow(Math.sin(PI*u),.85)*length*(.24+s[7]*.16)*(1+.13*Math.sin(6*PI*u));
+        var steps=centerLod?6:12,outline=[];
+        for(var side=-1;side<=1;side+=2)for(var k=0;k<=steps;k++){
+          var u=side<0?k/steps:1-k/steps,wide=Math.pow(Math.sin(PI*u),.85)*length*(.24+s[7]*.16)*(1+.13*Math.sin(6*PI*u));
           var point=local(base[0],base[1],side*wide+s[9]*length*u*u*.3,-u*length,tilt);outline.push(point[0],point[1]);
         }
         poly(outline,5,-1,0,center[0],center[1]);

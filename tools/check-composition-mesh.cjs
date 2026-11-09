@@ -8,7 +8,7 @@ const large=CarpetMesh.compile({...base,commands:[[1,100,100,90,0,2]]});
 assert.equal(thin.length,large.length,'growing petals must retain vertex correspondence across stroke widths');
 vm.runInThisContext(fs.readFileSync(path.join(assets,'carpet-engine.js'),'utf8'));
 // A fan that reverses winding crosses its own outline, leaking fill into the field.
-for(const variant of [false,{unfold:true},{unfoldFrame:true},{unfoldWave:true},{unfoldJunction:true},{unfold:true,fusion:true},{unfoldFrame:true,fusion:true}])for(const seed of [11,3179343922])for(let index=-1;index<3;index++)for(const phase of [0,.5,1]){
+for(const variant of [false,{unfold:true,fusion:true,detailLevel:4},{unfold:true,fusion:true,detailLevel:2},{unfold:true,fusion:true,detailLevel:3},{unfold:true},{unfoldFrame:true},{unfoldWave:true},{unfoldJunction:true},{unfold:true,fusion:true},{unfoldFrame:true,fusion:true}])for(const seed of [11,3179343922])for(let index=-1;index<3;index++)for(const phase of [0,.5,1]){
   const scene=CarpetEngine.frame(seed,index,phase,variant);
   for(const op of scene.commands.filter(c=>c[0]===5)){
     const p=op[4],cx=op[5],cy=op[6];let sign=0;

@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const assets=path.join(__dirname,'../app/src/main/assets');
 const frameOnly=process.argv.includes('--unfold-frame');
-const variant=frameOnly?{unfoldFrame:true}:process.argv.includes('--unfold-junction')?{unfoldJunction:true}:process.argv.includes('--unfold-wave')?{unfoldWave:true}:process.argv.includes('--unfold')?{unfold:true}:false;
+const variant=process.argv.includes('--unfold-center-lod')?{unfold:true,fusion:true,detailLevel:4}:frameOnly?{unfoldFrame:true}:process.argv.includes('--unfold-junction')?{unfoldJunction:true}:process.argv.includes('--unfold-wave')?{unfoldWave:true}:process.argv.includes('--unfold')?{unfold:true}:false;
 if(process.argv.includes('--fusion')&&variant)variant.fusion=true;
 vm.runInThisContext(fs.readFileSync(path.join(assets,'carpet-engine.js'),'utf8'));
 const meshFile=path.join(assets,'carpet-mesh.js');

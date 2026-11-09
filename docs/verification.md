@@ -38,3 +38,7 @@ The native optimized renderer also received an independent static review of its 
 The current native zoom tuning measures 24.8–25.6 changing frames/s on the Mali-450 projector at a 1120×630 reconstructed image (560×315 quarter framebuffer). This trades some spatial resolution for motion and mipmapped detail stability. It is not a locked frame-pacing claim: isolated cache updates reached 90 ms in the measured run.
 
 The renderer uses four separately refreshed pattern caches, live coarse geometry, endpoint-safe viewport culling, and one stencil clear per assembled frame. Distance-field sampling is restored explicitly before the junction mask. Native pose, geometry and actual GLSL checks pass; an independent review found no remaining correctness issues.
+
+### Live center correction
+
+Central flowers and rosettes are now rendered as live vector geometry at every visible scale. Only fine infill remains in the pattern cache; the unused whole-rosette cache is no longer refreshed. Small centers use a lower tessellation while retaining vertex correspondence. This removes the one-second shape steps caused by caching complete small rosettes. Recorded projector samples after the correction: 25.1–25.7 FPS, no GL errors or geometry starvation. Center LOD topology, polygon fans and packed native poses pass.

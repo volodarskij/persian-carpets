@@ -28,7 +28,7 @@ final class CarpetView extends GLSurfaceView implements GLSurfaceView.Renderer {
     private final int[] quadBuffer=new int[1],target=new int[1],texture=new int[1],stencil=new int[1];
     private final int[] fanBuffer=new int[1],fieldTarget=new int[1],fieldTexture=new int[1];
     private final int[] gardenTarget=new int[4],gardenTexture=new int[4];
-    private final double[] gardenTimes={-100,-100,-100,-100};private int gardenNext;
+    private final double[] gardenTimes={-100,-100,-100,-100};private int gardenNext=1;
     private final FloatBuffer fan=ByteBuffer.allocateDirect(66*8).order(ByteOrder.nativeOrder()).asFloatBuffer();
     private final FloatBuffer quad=ByteBuffer.allocateDirect(32).order(ByteOrder.nativeOrder()).asFloatBuffer();
     private final float[] colors=new float[18],contour=new float[3],bounds=new float[4],center=new float[2],fieldColor=new float[3];
@@ -74,8 +74,8 @@ final class CarpetView extends GLSurfaceView implements GLSurfaceView.Renderer {
         try{
             failed=false;main=new Shader(zoom?"zoom.vert":"carpet.vert",zoom?"zoom-fast.frag":"carpet.frag");mirror=new Shader("mirror.vert","mirror.frag");
             if(zoom){
-                garden=new Shader("garden-cache.vert","garden-cache.frag");java.util.Arrays.fill(gardenTimes,-100);gardenNext=0;
-                glGenTextures(4,gardenTexture,0);glGenFramebuffers(4,gardenTarget,0);for(int cache=0;cache<4;cache++){glBindTexture(GL_TEXTURE_2D,gardenTexture[cache]);
+                garden=new Shader("garden-cache.vert","garden-cache.frag");java.util.Arrays.fill(gardenTimes,-100);gardenNext=1;
+                glGenTextures(4,gardenTexture,0);glGenFramebuffers(4,gardenTarget,0);for(int cache=1;cache<4;cache++){glBindTexture(GL_TEXTURE_2D,gardenTexture[cache]);
                 int size=cache==1||cache==2?512:1024;glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,size,size,0,GL_RGBA,GL_UNSIGNED_BYTE,null);
                 glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
@@ -176,7 +176,7 @@ final class CarpetView extends GLSurfaceView implements GLSurfaceView.Renderer {
     }
     private void renderZoom(double seconds,float t){
         int cycle=(int)Math.floor(seconds/18);float magnification=(float)Math.pow(1/RATIO,seconds/18-cycle),reach=cornerReach(magnification);
-        if(gardenTimes[3]<0){for(int c=0;c<4;c++)prepareGarden(seconds,t);}else prepareGarden(seconds,t);
+        if(gardenTimes[3]<0){for(int c=0;c<3;c++)prepareGarden(seconds,t);}else prepareGarden(seconds,t);
         // Evaluate expensive union geometry once, then reuse its signed distances.
         glBindFramebuffer(GL_FRAMEBUFFER,fieldTarget[0]);glViewport(0,0,fieldWidth,fieldHeight);glDisable(GL_BLEND);
         field.use();field.three("contour",contour,0);glUniform4fv(field.u("bounds"),1,bounds,0);glUniform2fv(field.u("waveCenter"),1,center,0);field.one("zoom",magnification);field.one("cornerStretch",reach);field.one("aa",.7f*450/fieldHeight);drawQuad();
@@ -187,7 +187,7 @@ final class CarpetView extends GLSurfaceView implements GLSurfaceView.Renderer {
             glStencilMask(255);glStencilFunc(GL_ALWAYS,0,255);
             background.use();layerBackground(depth+cycle);background.three("pigment",fieldColor,0);drawBackground(scale);
             glStencilMask(255);glStencilFunc(GL_ALWAYS,2,255);
-            if(scale*450*fw/800>2){drawGarden(scale,scale>1.4f?3:0);if(scale>1.4f)rosette(scale,7,0,0,t);}
+            if(scale*450*fw/800>2){drawGarden(scale,3);rosette(scale,scale*fw/800>.4f?7:0,0,0,t);}
         }
         glStencilMask(0);glStencilFunc(GL_EQUAL,0,2);glStencilOp(GL_KEEP,GL_KEEP,GL_KEEP);drawGarden(1,1);glDisable(GL_STENCIL_TEST);glStencilMask(255);
         frame(4,t,reach);
@@ -202,7 +202,7 @@ final class CarpetView extends GLSurfaceView implements GLSurfaceView.Renderer {
     private void prepareGarden(double seconds,float t){
         int cache=gardenNext;
         if(seconds>=gardenTimes[cache]&&seconds-gardenTimes[cache]<1.0)return;
-        gardenTimes[cache]=seconds;gardenNext=(cache+1)%4;
+        gardenTimes[cache]=seconds;gardenNext=cache==3?1:cache+1;
         {glBindFramebuffer(GL_FRAMEBUFFER,gardenTarget[cache]);int size=cache==1||cache==2?512:1024;glViewport(0,0,size,size);
         glDisable(GL_STENCIL_TEST);glClearColor(0,0,0,0);glClear(GL_COLOR_BUFFER_BIT);
         glEnable(GL_BLEND);glBlendFuncSeparate(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA,GL_ONE,GL_ONE_MINUS_SRC_ALPHA);
