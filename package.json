@@ -1,0 +1,11 @@
+{
+  "name": "persian-carpets",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "shaders": "node tools/export-shaders.cjs",
+    "test": "node tools/export-shaders.cjs --check && node tools/check-native-poses.cjs && node tools/check-mesh.cjs && node tools/check-mesh.cjs --unfold-junction && node tools/check-composition-mesh.cjs",
+    "test:gpu": "node tools/check-cached-field.cjs && node tools/check-liquid-joins.cjs && node tools/check-liquid-joins.cjs --finite-gradient && node tools/check-unfold.cjs"
+  },
+  "devDependencies": {"playwright": "1.62.1"}
+}

@@ -1,0 +1,32 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.volodarskij.carpets'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'com.volodarskij.carpets'
+        minSdk 26
+        targetSdk 28
+        versionCode 1
+        versionName '1.0.0'
+    }
+    flavorDimensions += 'motion'
+    productFlavors {
+        morph {
+            dimension 'motion'
+            applicationIdSuffix '.morph'
+            buildConfigField 'boolean', 'ZOOM', 'false'
+            resValue 'string', 'app_name', 'Ковры: морфинг'
+        }
+        zoom {
+            dimension 'motion'
+            applicationIdSuffix '.zoom'
+            buildConfigField 'boolean', 'ZOOM', 'true'
+            resValue 'string', 'app_name', 'Ковры: зум'
+        }
+    }
+    buildFeatures { buildConfig true }
+    // Local sideload builds. Override with your own signing config for distribution updates.
+    buildTypes { release { signingConfig signingConfigs.debug } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    lint { disable 'ExpiredTargetSdkVersion' }
+}

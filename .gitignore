@@ -1,0 +1,10 @@
+.gradle/
+**/build/
+local.properties
+*.jks
+*.keystore
+artifacts/
+node_modules/
+.superpowers/
+docs/implementation-plan.md
+docs/zoom.png
